@@ -8,29 +8,10 @@ tools = [
         "type": "function",
         "function": {
             "name": "get_current_time",
-            "description": "Get the current date and time in a specific timezone",
+            "description": "Get the current date and time",
             "parameters": {
                 "type": "object",
-                "properties": {
-                    "timezone": {
-                        "type": "string",
-                        "description": "Timezone name, e.g. America/Vancouver",
-                    },
-                },
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_weather",
-            "description": "Get the current weather for a specific city",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "city": {"type": "string", "description": "City name"},
-                    "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
-                },
+                "properties": {},
             },
         },
     },
@@ -61,8 +42,6 @@ tools = [
 def execute_tool(name, arguments):
     if name == "get_current_time":
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    if name == "get_weather":
-        return '{"temperature": 13.2, "unit": "celsius", "conditions": "clear", "humidity": 93}'
     if name == "read_file":
         return read_file(arguments)
 
