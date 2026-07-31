@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from dotenv import load_dotenv
 from openai import OpenAI
 from datetime import datetime
+from terminal_utils import cprint
 
 # Parse command line arguments
 parser = argparse.ArgumentParser()
@@ -98,7 +99,7 @@ def collect_streaming_message(response):
 
         if reasoning_delta:
             reasoning_content += reasoning_delta
-            print(reasoning_delta, end="", flush=True)
+            cprint(reasoning_delta, color="gray", end="", flush=True)
 
         if content_delta:
             content += content_delta
@@ -175,6 +176,10 @@ try:
         else:
             # Execute each tool requested by the model, append results to message list
             for tool_call in assistant_message.tool_calls:
+                cprint(
+                    f"[Tool] {tool_call.function.name}({tool_call.function.arguments})",
+                    color="light_green",
+                )
                 result = execute_tool(tool_call.function.name, tool_call.function.arguments)
                 messages.append({
                     "role": "tool",
