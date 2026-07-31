@@ -120,8 +120,8 @@ messages = [
 try:
     while True:
         response = client.chat.completions.create(
-            model="deepseek-v4-pro", messages=messages, tools=tools,
-            stream=True, reasoning_effort="high", extra_body={"thinking": {"type": "enabled"}}
+            model=os.getenv("model"), messages=messages, tools=tools,
+            stream=True, reasoning_effort="max", extra_body={"thinking": {"type": "enabled"}}
         )
         assistant_message = collect_streaming_message(response)
 

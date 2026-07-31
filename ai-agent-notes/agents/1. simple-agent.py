@@ -89,7 +89,7 @@ messages = [
 try:
     while True:
         response = client.chat.completions.create(
-            model="deepseek-v4-pro", messages=messages, tools=tools
+            model=os.getenv("model"), messages=messages, tools=tools
         )
         assistant_message = response.choices[0].message
 
