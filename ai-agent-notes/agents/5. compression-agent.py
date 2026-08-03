@@ -4,9 +4,10 @@ import os
 from types import SimpleNamespace
 from dotenv import load_dotenv
 from openai import OpenAI
-from agent_tools import execute_skill_tool, SKILL_TOOLS, SKILLS_DIR
+from agent_tools import execute_skill_tool, SKILL_TOOLS
 from agent_tools import tools as base_tools
-from terminal_utils import cprint
+from terminal_utils import cprint, print_messages
+from skill_catalog import scan_skill_catalog
 
 # Parse command line arguments
 parser = argparse.ArgumentParser()
@@ -20,42 +21,6 @@ client = OpenAI(
     base_url=os.getenv("base_url") or "https://api.deepseek.com",
     api_key=os.getenv("api_key"),
 )
-1
-def parse_frontmatter(skill_md):
-    """Parse the simple name/description YAML frontmatter used by SKILL.md."""
-    lines = skill_md.splitlines()
-    if not lines or lines[0].strip() != "---":
-        return {}
-
-    metadata = {}
-    for line in lines[1:]:
-        if line.strip() == "---":
-            break
-        if ":" in line:
-            key, value = line.split(":", 1)
-            metadata[key.strip()] = value.strip().strip("\"'")
-    return metadata
-
-
-def scan_skill_catalog():
-    """Read only skill metadata at startup; full instructions are loaded on demand."""
-    catalog = {}
-    if not SKILLS_DIR.is_dir():
-        return catalog
-
-    for skill_md in sorted(SKILLS_DIR.glob("*/SKILL.md")):
-        try:
-            metadata = parse_frontmatter(skill_md.read_text(encoding="utf-8"))
-        except (OSError, UnicodeError) as error:
-            cprint(f"[Skill] Failed to read {skill_md}: {error}", color="red")
-            continue
-
-        name = metadata.get("name") or skill_md.parent.name
-        catalog[name] = {
-            "description": metadata.get("description", ""),
-            "dir": skill_md.parent.resolve(),
-        }
-    return catalog
 
 
 def build_system_prompt(catalog):
@@ -163,40 +128,45 @@ def collect_streaming_message(response):
     )
 
 
-def print_messages(messages):
-    for message in messages:
-        print(json.dumps(message, ensure_ascii=False))
-
-
 # ── Initial message list ──
 skill_catalog = scan_skill_catalog()
 tools = base_tools + SKILL_TOOLS
-user_input = input("> ")
 messages = [
     {"role": "system", "content": build_system_prompt(skill_catalog)},
-    {"role": "user", "content": user_input},
 ]
 
 # ── Agent core loop ──
 try:
     while True:
-        response = client.chat.completions.create(
-            model=os.getenv("model"), messages=messages, tools=tools,
-            stream=True, reasoning_effort="max", extra_body={"thinking": {"type": "enabled"}}
-        )
-        assistant_message = collect_streaming_message(response)
-
-        # Append model's response to message list (whether text or tool calls)
-        messages.append(normalize_assistant_message(assistant_message))
-        if not args.no_debug:
+        user_input = input("> ")
+        if user_input.strip() == "/debug":
             print_messages(messages)
             print()
+            continue
+        if user_input.strip() == "/clear":
+            messages = [messages[0]]
+            print("会话已清理\n")
+            continue
+        if user_input.strip().startswith("/"):
+            print(f"未知命令: {user_input.strip()}\n")
+            continue
+        messages.append({"role": "user", "content": user_input})
 
-        # If no tool calls requested, the model has produced its final response
-        if not assistant_message.tool_calls:
-            user_input = input("> ")
-            messages.append({"role": "user", "content": user_input})
-        else:
+        while True:
+            response = client.chat.completions.create(
+                model=os.getenv("model"), messages=messages, tools=tools,
+                stream=True, reasoning_effort="max", extra_body={"thinking": {"type": "enabled"}}
+            )
+            assistant_message = collect_streaming_message(response)
+            messages.append(normalize_assistant_message(assistant_message))
+            
+            if not args.no_debug:
+                print_messages(messages)
+                print()
+
+            if not assistant_message.tool_calls:
+                break
+
             # Execute each tool requested by the model, append results to message list
             for tool_call in assistant_message.tool_calls:
                 cprint(
