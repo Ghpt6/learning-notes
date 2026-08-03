@@ -11,7 +11,7 @@ from skill_catalog import scan_skill_catalog
 
 # Parse command line arguments
 parser = argparse.ArgumentParser()
-parser.add_argument("--no-debug", action="store_true", help="Disable debug message output")
+parser.add_argument("--debug", action="store_true", help="Enable debug message output")
 parser.add_argument("--compress-fetch", action="store_true", help="Enable fetch_webpage tool compression")
 args = parser.parse_args()
 
@@ -22,6 +22,33 @@ client = OpenAI(
     base_url=os.getenv("base_url") or "https://api.deepseek.com",
     api_key=os.getenv("api_key"),
 )
+
+CONTEXT_WINDOW_SIZE = int(os.getenv("CONTEXT_WINDOW_SIZE", "128000"))
+current_context_usage = None
+
+
+def print_current_context():
+    """Print the token usage of the messages currently kept in context."""
+    if current_context_usage is None:
+        print(
+            "当前上下文：尚无 token 使用数据（请先完成一次模型调用）\n"
+            f"上下文窗口：{CONTEXT_WINDOW_SIZE:,} tokens\n"
+        )
+        return
+
+    prompt_tokens = getattr(current_context_usage, "prompt_tokens", 0) or 0
+    completion_tokens = getattr(current_context_usage, "completion_tokens", 0) or 0
+    # The latest completion has already been appended to messages, so the
+    # current context is the last request's prompt plus that completion.
+    used_tokens = prompt_tokens + completion_tokens
+    usage_percent = used_tokens / CONTEXT_WINDOW_SIZE * 100
+    remaining_tokens = max(CONTEXT_WINDOW_SIZE - used_tokens, 0)
+
+    print(
+        f"当前上下文：{used_tokens:,} / {CONTEXT_WINDOW_SIZE:,} tokens "
+        f"({usage_percent:.2f}%)\n"
+        f"剩余空间：{remaining_tokens:,} tokens\n"
+    )
 
 
 def build_system_prompt(catalog):
@@ -75,8 +102,12 @@ def collect_streaming_message(response):
     content = ""
     tool_calls = {}
     content_started = False
+    usage = None
 
     for chunk in response:
+        if getattr(chunk, "usage", None) is not None:
+            usage = chunk.usage
+
         if not chunk.choices:
             continue
 
@@ -115,6 +146,7 @@ def collect_streaming_message(response):
         role="assistant",
         reasoning_content=reasoning_content,
         content=content,
+        usage=usage,
         tool_calls=[
             SimpleNamespace(
                 id=tool_call["id"],
@@ -148,6 +180,9 @@ try:
             messages = [messages[0]]
             print("会话已清理\n")
             continue
+        if user_input.strip() == "/context":
+            print_current_context()
+            continue
         if user_input.strip().startswith("/"):
             print(f"未知命令: {user_input.strip()}\n")
             continue
@@ -156,12 +191,15 @@ try:
         while True:
             response = client.chat.completions.create(
                 model=os.getenv("model"), messages=messages, tools=tools,
-                stream=True, reasoning_effort="max", extra_body={"thinking": {"type": "enabled"}}
+                stream=True, stream_options={"include_usage": True},
+                reasoning_effort="max", extra_body={"thinking": {"type": "enabled"}}
             )
             assistant_message = collect_streaming_message(response)
             messages.append(normalize_assistant_message(assistant_message))
+            if assistant_message.usage is not None:
+                current_context_usage = assistant_message.usage
             
-            if not args.no_debug:
+            if args.debug:
                 print_messages(messages)
                 print()
 
@@ -181,7 +219,7 @@ try:
                     messages=messages,
                     compression_client=client,
                     compression_model=os.getenv("model"),
-                    debug=not args.no_debug,
+                    debug=args.debug,
                     compress_fetch=args.compress_fetch,
                 )
 
