@@ -4,7 +4,7 @@ import os
 from types import SimpleNamespace
 from dotenv import load_dotenv
 from openai import OpenAI
-from agent_tools import execute_skill_tool, SKILL_TOOLS
+from agent_tools import execute_agent_tool, SKILL_TOOLS
 from agent_tools import tools as base_tools
 from terminal_utils import cprint, print_messages
 from skill_catalog import scan_skill_catalog
@@ -12,6 +12,7 @@ from skill_catalog import scan_skill_catalog
 # Parse command line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("--no-debug", action="store_true", help="Disable debug message output")
+parser.add_argument("--compress-fetch", action="store_true", help="Enable fetch_webpage tool compression")
 args = parser.parse_args()
 
 # Load environment variables from .env in the project root
@@ -173,11 +174,17 @@ try:
                     f"[Tool] {tool_call.function.name}({tool_call.function.arguments})",
                     color="light_green",
                 )
-                result = execute_skill_tool(
+                result = execute_agent_tool(
                     skill_catalog,
                     tool_call.function.name,
                     tool_call.function.arguments,
+                    messages=messages,
+                    compression_client=client,
+                    compression_model=os.getenv("model"),
+                    debug=not args.no_debug,
+                    compress_fetch=args.compress_fetch,
                 )
+
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tool_call.id,

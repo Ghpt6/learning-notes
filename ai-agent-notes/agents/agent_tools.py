@@ -9,6 +9,13 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.request import Request, urlopen
 
+from context_compression import (
+    ContextCompressor,
+    latest_user_query,
+    recent_conversation_context,
+)
+from terminal_utils import cprint
+
 tools = [
     {
         "type": "function",
@@ -540,3 +547,56 @@ def execute_skill_tool(catalog, name, arguments):
     if name == "read_skill_file":
         return read_skill_file(catalog, parsed["name"], parsed["path"])
     return run_skill_script(catalog, parsed["name"], parsed["script"], parsed["payload"])
+
+
+def execute_agent_tool(
+    catalog,
+    name,
+    arguments,
+    *,
+    messages,
+    compression_client,
+    compression_model,
+    debug=True,
+    compress_fetch=False,
+):
+    """Execute a tool and context-compress successful webpage results."""
+    result = execute_skill_tool(catalog, name, arguments)
+    if name != "fetch_webpage" or not compress_fetch:
+        return result
+
+    compressor = ContextCompressor(
+        client=compression_client,
+        model=compression_model,
+    )
+    compressed = compressor.compress_fetch_webpage_result(
+        result,
+        query=latest_user_query(messages),
+        current_context=recent_conversation_context(messages),
+    )
+
+    if debug:
+        cprint(
+            f"\n===== fetch_webpage 原文（{compressed.original_length:,} 字符）=====",
+            color="cyan",
+        )
+        print(result)
+        ratio = (
+            compressed.compressed_length / compressed.original_length * 100
+            if compressed.original_length
+            else 0
+        )
+        cprint(
+            "===== CONTEXT_AWARE 压缩后 "
+            f"（{compressed.original_length:,} → "
+            f"{compressed.compressed_length:,} 字符, "
+            f"压缩率 {ratio:.1f}%）=====",
+            color="magenta",
+        )
+        print(compressed.content)
+        if compressed.used_fallback:
+            reason = compressed.error or "网页抓取未成功或正文为空"
+            cprint(f"[压缩回退] {reason}", color="yellow")
+        print()
+
+    return compressed.content
