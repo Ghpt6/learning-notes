@@ -2,6 +2,10 @@
 
 import json
 import os
+import re
+import unicodedata
+
+_ANSI_RE = re.compile(r"\033\[[0-9;]*m")
 
 COLORS = {
     "black":   "\033[30m",
@@ -27,6 +31,74 @@ def cprint(text, color=None, end="\n", flush=False):
     print(f"{code}{text}{RESET}" if code else text, end=end, flush=flush)
 
 
+def _char_width(char):
+    """Return the number of terminal columns occupied by one Unicode character."""
+    if unicodedata.combining(char) or unicodedata.category(char) in {"Cc", "Cf"}:
+        return 0
+    return 2 if unicodedata.east_asian_width(char) in {"W", "F"} else 1
+
+
+def _display_width(text):
+    """Return the terminal display width of *text*, ignoring ANSI codes."""
+    return sum(_char_width(char) for char in _ANSI_RE.sub("", text))
+
+
+def _wrap_display_line(text, width, continuation_indent=""):
+    """Split one logical line and optionally indent its continuation lines.
+
+    ANSI escape sequences are preserved in output but excluded from width
+    calculations so they do not affect wrapping or alignment.
+    """
+    if not text:
+        return [""]
+
+    lines = []
+    current = []
+    current_width = 0
+    i = 0
+
+    while i < len(text):
+        # Consume any ANSI escape sequence (preserve in output, zero width)
+        m = _ANSI_RE.match(text, i)
+        if m:
+            current.append(m.group())
+            i = m.end()
+            continue
+
+        char = text[i]
+        i += 1
+
+        if char == "\t":
+            spaces = 4 - (current_width % 4)
+            chars = " " * spaces
+        else:
+            chars = char
+
+        for expanded_char in chars:
+            char_width = _char_width(expanded_char)
+            if current and current_width + char_width > width:
+                lines.append("".join(current))
+                current = list(continuation_indent)
+                current_width = _display_width(continuation_indent)
+            current.append(expanded_char)
+            current_width += char_width
+
+    lines.append("".join(current))
+    return lines
+
+
+def _print_boxed_line(text, width, color=None):
+    """Print text wrapped, padded, and enclosed by both vertical borders."""
+    logical_lines = text.splitlines() or [""]
+    for logical_line in logical_lines:
+        leading_spaces = len(logical_line) - len(logical_line.lstrip(" \t"))
+        indent_width = max(2, len(logical_line[:leading_spaces].expandtabs(4)))
+        continuation_indent = " " * min(indent_width, max(0, width - 1))
+        for line in _wrap_display_line(logical_line, width, continuation_indent):
+            padding = " " * max(0, width - _display_width(line))
+            cprint(f"║{line}{padding}║", color=color)
+
+
 def print_messages(messages, title="Debug Messages"):
     """Print agent message history with formatted box and colors.
 
@@ -35,7 +107,7 @@ def print_messages(messages, title="Debug Messages"):
         title: Title shown in the top border.
     """
     try:
-        width = os.get_terminal_size().columns - 2
+        width = max(1, os.get_terminal_size().columns - 2)
     except OSError:
         width = 80
 
@@ -53,7 +125,8 @@ def print_messages(messages, title="Debug Messages"):
     }
 
     # Top border
-    pad = max(0, width - len(title))
+    title = _wrap_display_line(title, width)[0]
+    pad = max(0, width - _display_width(title))
     left = pad // 2
     right = pad - left
     cprint(f"╔{'═' * left}{title}{'═' * right}╗", color="gray")
@@ -65,10 +138,14 @@ def print_messages(messages, title="Debug Messages"):
 
         # Role header
         tag = f" [{i + 1}] {label} "
-        cprint(f"║{tag}{'─' * max(0, width - len(tag))}║", color=color)
+        tag = _wrap_display_line(tag, width)[0]
+        tag_width = _display_width(tag)
+        cprint(f"║{tag}{'─' * max(0, width - tag_width)}║", color=color)
 
         # Content formatting
         content_parts = []
+        reasoning_parts = []
+
         if role == "tool":
             content_parts.append(f"  call_id: {message.get('tool_call_id', '')}")
 
@@ -81,28 +158,30 @@ def print_messages(messages, title="Debug Messages"):
                 for line in content.split("\n"):
                     content_parts.append(f"  {line}" if line else "")
         else:
-            content_parts.append("  (无内容)")
+            # content_parts.append("  (无内容)")
+            pass
 
         reasoning = message.get("reasoning_content", "")
         if reasoning:
-            content_parts.append("  ── reasoning ──")
             for line in reasoning.split("\n"):
-                content_parts.append(f"  {line}" if line else "")
+                reasoning_parts.append(f"  {line}" if line else "")
 
         tool_calls = message.get("tool_calls")
         if tool_calls:
-            content_parts.append("  ── tool_calls ──")
             for tc in tool_calls:
                 fn = tc.get("function", {})
-                content_parts.append(f"  {fn.get('name', '?')}({fn.get('arguments', '')})")
-                content_parts.append(f"  id: {tc.get('id', '')}")
+                name = fn.get('name', '?')
+                args = fn.get('arguments', '')
+                call_id = tc.get('id', '')
+                # Bright white for function name
+                name_colored = f"\033[97m{name}\033[0m"
+                content_parts.append(f"  {name_colored}({args}) - {call_id}")
+
+        for line in reasoning_parts:
+            _print_boxed_line(line, width, color="gray")
 
         for line in content_parts:
-            display = line if len(line) <= width else line[:width - 1] + "…"
-            print(f"║{display}")
-
-        # if i < len(messages) - 1:
-        #     cprint(f"║{'┄' * width}║", color="gray")
+            _print_boxed_line(line, width)
 
     # Bottom border
     cprint(f"╚{'═' * width}╝", color="gray")
