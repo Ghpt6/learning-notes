@@ -146,7 +146,7 @@ SLASH_COMMANDS = [
     ("/debug", "打印当前会话消息"),
     ("/context", "显示当前上下文使用情况"),
     ("/clear", "清空当前会话"),
-    ("/theme", "切换 Markdown 代码块配色 (/theme <名字>)"),
+    ("/theme", "切换并保存 Markdown 代码块配色 (/theme <名字>)"),
 ]
 
 
@@ -187,6 +187,23 @@ def print_theme_options():
         marker = "  (当前)" if name == current_code_theme else ""
         print(f"  {name:<18}{marker}")
     print("\n切换: /theme <主题名>")
+
+
+def save_theme_setting(theme):
+    """Persist the code theme into the project config file."""
+    try:
+        with args.config.open("r", encoding="utf-8-sig") as config_file:
+            config = json.load(config_file)
+    except (OSError, json.JSONDecodeError) as error:
+        return f"无法读取配置文件: {error}"
+    config["theme"] = theme
+    try:
+        with args.config.open("w", encoding="utf-8") as config_file:
+            json.dump(config, config_file, ensure_ascii=False, indent=4)
+            config_file.write("\n")
+    except OSError as error:
+        return f"无法写入配置文件: {error}"
+    return None
 
 
 # ── Message formatting ──
@@ -307,6 +324,15 @@ async def main():
     except (TypeError, ValueError) as error:
         raise SystemExit(f"配置错误: {error}") from error
 
+    # 从配置文件恢复上次保存的 Markdown 代码块主题
+    current_code_theme = project_config.get("theme") or "monokai"
+    if current_code_theme not in CODE_THEMES:
+        cprint(
+            f"配置中的主题无效: {current_code_theme},已回退到 monokai",
+            color="yellow",
+        )
+        current_code_theme = "monokai"
+
     client = OpenAI(
         base_url=get_setting(config_env, "base_url", "https://api.deepseek.com"),
         api_key=get_setting(config_env, "api_key"),
@@ -370,6 +396,12 @@ async def main():
                 else:
                     current_code_theme = new_theme
                     cprint(f"已切换代码块主题: {new_theme}", color="green")
+                    save_error = save_theme_setting(new_theme)
+                    if save_error:
+                        cprint(
+                            f"保存到配置文件失败: {save_error}(本次会话仍生效)",
+                            color="yellow",
+                        )
                     _rich_console.print(render_markdown(THEME_DEMO))
                 continue
             if user_input.strip().startswith("/"):
