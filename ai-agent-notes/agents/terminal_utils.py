@@ -31,6 +31,17 @@ def cprint(text, color=None, end="\n", flush=False):
     print(f"{code}{text}{RESET}" if code else text, end=end, flush=flush)
 
 
+def clear_screen():
+    """Clear the terminal screen including the scrollback buffer.
+
+    Uses the platform's native clear command (cls on Windows) because it
+    clears the entire console buffer. ANSI escape sequences like \\033[2J
+    only clear the visible area and may be ignored by Windows consoles
+    without VT processing enabled.
+    """
+    os.system("cls" if os.name == "nt" else "clear")
+
+
 def _char_width(char):
     """Return the number of terminal columns occupied by one Unicode character."""
     if unicodedata.combining(char) or unicodedata.category(char) in {"Cc", "Cf"}:

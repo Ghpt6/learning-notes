@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from openai import OpenAI
 from agent_tools import execute_agent_tool, SKILL_TOOLS
 from agent_tools import tools as base_tools
-from terminal_utils import cprint, print_messages
+from terminal_utils import clear_screen, cprint, print_messages
 from skill_catalog import scan_skill_catalog
 from mcp_client import MCPClient, load_mcp_servers
 from code_theme import (
@@ -285,6 +285,7 @@ async def main():
                 continue
             if user_input.strip() == "/clear":
                 messages = [messages[0]]
+                clear_screen()
                 print("会话已清理\n")
                 continue
             if user_input.strip() == "/context":
