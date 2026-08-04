@@ -1,12 +1,14 @@
 """Minimal MCP client adapter for the OpenAI function-calling format.
 
-Configure servers with the ``MCP_SERVERS`` environment variable. Both the
-common ``{"mcpServers": {...}}`` shape and the servers object itself work::
+Configure servers with a dict or with the legacy ``MCP_SERVERS`` environment
+variable. Both the common ``{"mcpServers": {...}}`` shape and the servers
+object itself work::
 
     MCP_SERVERS={"filesystem":{"command":"npx","args":["-y","@modelcontextprotocol/server-filesystem","."]}}
 
 A server may use stdio (``command`` + optional ``args``/``env``) or Streamable
-HTTP (``url``). MCP tools are exposed as ``mcp__<server>__<tool>``.
+HTTP (``httpUrl`` or legacy ``url``). MCP tools are exposed as
+``mcp__<server>__<tool>``.
 """
 
 import json
@@ -17,28 +19,44 @@ from contextlib import AsyncExitStack
 
 def load_mcp_servers(value=None):
     """Load and validate MCP server definitions from JSON."""
-    raw = os.getenv("MCP_SERVERS", "") if value is None else value
-    if not raw.strip():
-        return {}
-
-    try:
-        config = json.loads(raw)
-    except json.JSONDecodeError as error:
-        raise ValueError(f"MCP_SERVERS is not valid JSON: {error}") from error
+    value = os.getenv("MCP_SERVERS", "") if value is None else value
+    if isinstance(value, str):
+        if not value.strip():
+            return {}
+        try:
+            config = json.loads(value)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"MCP_SERVERS is not valid JSON: {error}") from error
+    elif isinstance(value, dict):
+        config = value
+    else:
+        raise ValueError("MCP server configuration must be a JSON object")
 
     if isinstance(config, dict) and "mcpServers" in config:
         config = config["mcpServers"]
     if not isinstance(config, dict):
         raise ValueError("MCP_SERVERS must be a JSON object")
 
-    for name, server in config.items():
+    normalized = {}
+    for name, original_server in config.items():
         if not isinstance(name, str) or not name.strip():
             raise ValueError("Every MCP server needs a non-empty name")
-        if not isinstance(server, dict):
+        if not isinstance(original_server, dict):
             raise ValueError(f"MCP server {name!r} must be an object")
+        server = dict(original_server)
+        if server.get("httpUrl") and server.get("url"):
+            if server["httpUrl"] != server["url"]:
+                raise ValueError(
+                    f"MCP server {name!r} has conflicting 'httpUrl' and 'url'"
+                )
+        if server.get("httpUrl"):
+            server["url"] = server.pop("httpUrl")
         if not server.get("command") and not server.get("url"):
-            raise ValueError(f"MCP server {name!r} needs 'command' or 'url'")
-    return config
+            raise ValueError(
+                f"MCP server {name!r} needs 'command', 'httpUrl', or 'url'"
+            )
+        normalized[name] = server
+    return normalized
 
 
 def _safe_name(value):
