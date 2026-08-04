@@ -10,6 +10,17 @@ from agent_tools import tools as base_tools
 from terminal_utils import cprint, print_messages
 from skill_catalog import scan_skill_catalog
 from mcp_client import MCPClient, load_mcp_servers
+from rich.console import Console
+from rich.live import Live
+from rich.markdown import Markdown
+from pygments.styles import get_all_styles
+
+_rich_console = Console()
+
+# 当前 Markdown 代码块配色主题,可通过 /theme 命令切换
+current_code_theme = "monokai"
+CODE_THEMES = sorted(get_all_styles())
+THEME_DEMO = "```python\nimport os\nprint(os.getcwd())\n```"
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config.json"
@@ -135,6 +146,7 @@ SLASH_COMMANDS = [
     ("/debug", "打印当前会话消息"),
     ("/context", "显示当前上下文使用情况"),
     ("/clear", "清空当前会话"),
+    ("/theme", "切换 Markdown 代码块配色 (/theme <名字>)"),
 ]
 
 
@@ -159,6 +171,22 @@ def print_tool_list(title, tool_list):
         print(" - ", end="")
         cprint(function.get("description") or "无描述", color="gray")
     print()
+
+
+# ── Markdown 渲染 ──
+def render_markdown(text):
+    """Render markdown text with the current code theme."""
+    return Markdown(text, code_theme=current_code_theme)
+
+
+def print_theme_options():
+    """Print the current code theme and all available options."""
+    cprint(f"当前代码块主题: {current_code_theme}", color="cyan")
+    print("可用主题:")
+    for name in CODE_THEMES:
+        marker = "  (当前)" if name == current_code_theme else ""
+        print(f"  {name:<18}{marker}")
+    print("\n切换: /theme <主题名>")
 
 
 # ── Message formatting ──
@@ -192,6 +220,12 @@ def collect_streaming_message(response):
     content_started = False
     usage = None
 
+    # Stream assistant output as live-rendered markdown (headings, bold,
+    # code blocks). transient=True clears the streaming view on stop so
+    # the final complete render can be printed afterwards.
+    live = Live(render_markdown(""), console=_rich_console, refresh_per_second=8,
+                transient=True)
+
     for chunk in response:
         if getattr(chunk, "usage", None) is not None:
             usage = chunk.usage
@@ -209,10 +243,12 @@ def collect_streaming_message(response):
 
         if content_delta:
             content += content_delta
-            if reasoning_content and not content_started:
-                print()
-            print(content_delta, end="", flush=True)
-            content_started = True
+            if not content_started:
+                if reasoning_content:
+                    print()
+                live.start()
+                content_started = True
+            live.update(render_markdown(content))
 
         for tool_call_delta in getattr(delta, "tool_calls", None) or []:
             tool_call = tool_calls.setdefault(
@@ -226,6 +262,12 @@ def collect_streaming_message(response):
             if tool_call_delta.function:
                 tool_call["name"] += tool_call_delta.function.name or ""
                 tool_call["arguments"] += tool_call_delta.function.arguments or ""
+
+    if content_started:
+        # The streaming view may be truncated on long responses; reprint the
+        # complete markdown once streaming finishes.
+        live.stop()
+        _rich_console.print(render_markdown(content))
 
     if reasoning_content or content:
         print()
@@ -250,7 +292,7 @@ def collect_streaming_message(response):
 
 
 async def main():
-    global CONTEXT_WINDOW_SIZE, current_context_usage
+    global CONTEXT_WINDOW_SIZE, current_context_usage, current_code_theme
 
     try:
         project_config = load_project_config(args.config.resolve())
@@ -316,6 +358,19 @@ async def main():
                 continue
             if user_input.strip() == "/context":
                 print_current_context()
+                continue
+            if user_input.strip() == "/theme":
+                print_theme_options()
+                continue
+            if user_input.strip().startswith("/theme "):
+                new_theme = user_input.strip().split(maxsplit=1)[1]
+                if new_theme not in CODE_THEMES:
+                    cprint(f"未知主题: {new_theme}", color="yellow")
+                    print_theme_options()
+                else:
+                    current_code_theme = new_theme
+                    cprint(f"已切换代码块主题: {new_theme}", color="green")
+                    _rich_console.print(render_markdown(THEME_DEMO))
                 continue
             if user_input.strip().startswith("/"):
                 print(f"未知命令: {user_input.strip()}\n")
