@@ -130,7 +130,7 @@ def build_system_prompt(catalog, mcp_tools):
 
 SLASH_COMMANDS = [
     ("/help", "列出所有 slash 命令"),
-    ("/tool", "列出所有本地工具（不包含 MCP）"),
+    ("/tools", "列出所有本地工具（不包含 MCP）"),
     ("/mcp", "列出所有 MCP 工具"),
     ("/debug", "打印当前会话消息"),
     ("/context", "显示当前上下文使用情况"),
@@ -153,8 +153,11 @@ def print_tool_list(title, tool_list):
 
     for tool in tool_list:
         function = tool["function"]
-        description = function.get("description") or "无描述"
-        print(f"  {function['name']} - {description}")
+        print("  ", end="")
+        # Bright white for tool name (same as terminal_utils tool_calls)
+        print(f"\033[97m{function['name']}\033[0m", end="")
+        print(" - ", end="")
+        cprint(function.get("description") or "无描述", color="gray")
     print()
 
 
@@ -290,11 +293,14 @@ async def main():
 
         # ── Agent core loop ──
         while True:
-            user_input = input("> ")
+            try:
+                user_input = input("> ")
+            except EOFError:
+                break
             if user_input.strip() == "/help":
                 print_slash_commands()
                 continue
-            if user_input.strip() == "/tool":
+            if user_input.strip() == "/tools":
                 print_tool_list("本地工具", base_tools + SKILL_TOOLS)
                 continue
             if user_input.strip() == "/mcp":
@@ -368,4 +374,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nbye！")
+        print("\nbye!")
