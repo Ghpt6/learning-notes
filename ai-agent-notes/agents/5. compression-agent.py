@@ -19,7 +19,7 @@ args = parser.parse_args()
 load_dotenv()
 
 client = OpenAI(
-    base_url=os.getenv("base_url") or "https://api.deepseek.com",
+    base_url=os.getenv("base_url", "https://api.deepseek.com"),
     api_key=os.getenv("api_key"),
 )
 
@@ -192,7 +192,7 @@ try:
             response = client.chat.completions.create(
                 model=os.getenv("model"), messages=messages, tools=tools,
                 stream=True, stream_options={"include_usage": True},
-                reasoning_effort="max", extra_body={"thinking": {"type": "enabled"}}
+                reasoning_effort=os.getenv("effort", "medium"), extra_body={"thinking": {"type": "enabled"}}
             )
             assistant_message = collect_streaming_message(response)
             messages.append(normalize_assistant_message(assistant_message))

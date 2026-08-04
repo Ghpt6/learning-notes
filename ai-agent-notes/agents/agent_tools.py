@@ -21,7 +21,7 @@ tools = [
         "type": "function",
         "function": {
             "name": "get_current_time",
-            "description": "Get the current date and time",
+            "description": "Get the current date and time in the user's location",
             "parameters": {
                 "type": "object",
                 "properties": {},
