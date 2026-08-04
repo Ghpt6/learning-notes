@@ -1,8 +1,4 @@
 import asyncio
-import argparse
-import json
-import os
-from pathlib import Path
 from types import SimpleNamespace
 from openai import OpenAI
 from agent_tools import execute_agent_tool, SKILL_TOOLS
@@ -18,69 +14,16 @@ from code_theme import (
     save_theme_setting,
     set_theme,
 )
+from app_config import apply_env, get_setting, load_project_config, parse_args
 from rich.console import Console
 from rich.live import Live
 
 _rich_console = Console()
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config.json"
-
-# Parse command line arguments
-parser = argparse.ArgumentParser()
-parser.add_argument("--debug", action="store_true", help="Enable debug message output")
-parser.add_argument("--compress-fetch", action="store_true", help="Enable fetch_webpage tool compression")
-parser.add_argument(
-    "--config",
-    type=Path,
-    default=DEFAULT_CONFIG_PATH,
-    help="JSON config path (default: <project root>/config.json)",
-)
-args = parser.parse_args()
+args = parse_args()
 
 CONTEXT_WINDOW_SIZE = 128000
 current_context_usage = None
-
-
-def load_project_config(path):
-    """Load the agent environment and MCP servers from a JSON file."""
-    try:
-        with path.open("r", encoding="utf-8-sig") as config_file:
-            config = json.load(config_file)
-    except FileNotFoundError as error:
-        raise ValueError(f"找不到配置文件: {path}") from error
-    except OSError as error:
-        raise ValueError(f"无法读取配置文件 {path}: {error}") from error
-    except json.JSONDecodeError as error:
-        raise ValueError(f"配置文件不是有效的 JSON ({path}): {error}") from error
-
-    if not isinstance(config, dict):
-        raise ValueError("配置文件根节点必须是 JSON 对象")
-
-    env = config.get("env", {})
-    if not isinstance(env, dict):
-        raise ValueError("配置项 'env' 必须是 JSON 对象")
-    mcp_servers = config.get("mcpServers", {})
-    if not isinstance(mcp_servers, dict):
-        raise ValueError("配置项 'mcpServers' 必须是 JSON 对象")
-
-    normalized_env = {}
-    for name, value in env.items():
-        if not isinstance(name, str) or not name.strip():
-            raise ValueError("'env' 中的变量名必须是非空字符串")
-        if value is None or isinstance(value, (dict, list)):
-            raise ValueError(f"环境变量 {name!r} 的值必须是字符串、数字或布尔值")
-        normalized_env[name] = str(value)
-
-    normalized_config = dict(config)
-    normalized_config["env"] = normalized_env
-    normalized_config["mcpServers"] = mcp_servers
-    return normalized_config
-
-
-def get_setting(env, name, default=None):
-    """Read a setting after the JSON env has been applied to this process."""
-    return os.getenv(name, env.get(name, default))
 
 
 def print_current_context():
@@ -284,7 +227,7 @@ async def main():
         config_env = project_config["env"]
         # Make every configured value available to local tools and MCP child
         # processes, while keeping the change scoped to this Python process.
-        os.environ.update(config_env)
+        apply_env(config_env)
         mcp_servers = load_mcp_servers(project_config)
         CONTEXT_WINDOW_SIZE = int(
             get_setting(config_env, "CONTEXT_WINDOW_SIZE", "128000")
