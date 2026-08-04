@@ -10,17 +10,18 @@ from agent_tools import tools as base_tools
 from terminal_utils import cprint, print_messages
 from skill_catalog import scan_skill_catalog
 from mcp_client import MCPClient, load_mcp_servers
+from code_theme import (
+    THEME_DEMO,
+    load_theme,
+    print_theme_options,
+    render_markdown,
+    save_theme_setting,
+    set_theme,
+)
 from rich.console import Console
 from rich.live import Live
-from rich.markdown import Markdown
-from pygments.styles import get_all_styles
 
 _rich_console = Console()
-
-# 当前 Markdown 代码块配色主题,可通过 /theme 命令切换
-current_code_theme = "monokai"
-CODE_THEMES = sorted(get_all_styles())
-THEME_DEMO = "```python\nimport os\nprint(os.getcwd())\n```"
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config.json"
@@ -173,39 +174,6 @@ def print_tool_list(title, tool_list):
     print()
 
 
-# ── Markdown 渲染 ──
-def render_markdown(text):
-    """Render markdown text with the current code theme."""
-    return Markdown(text, code_theme=current_code_theme)
-
-
-def print_theme_options():
-    """Print the current code theme and all available options."""
-    cprint(f"当前代码块主题: {current_code_theme}", color="cyan")
-    print("可用主题:")
-    for name in CODE_THEMES:
-        marker = "  (当前)" if name == current_code_theme else ""
-        print(f"  {name:<18}{marker}")
-    print("\n切换: /theme <主题名>")
-
-
-def save_theme_setting(theme):
-    """Persist the code theme into the project config file."""
-    try:
-        with args.config.open("r", encoding="utf-8-sig") as config_file:
-            config = json.load(config_file)
-    except (OSError, json.JSONDecodeError) as error:
-        return f"无法读取配置文件: {error}"
-    config["theme"] = theme
-    try:
-        with args.config.open("w", encoding="utf-8") as config_file:
-            json.dump(config, config_file, ensure_ascii=False, indent=4)
-            config_file.write("\n")
-    except OSError as error:
-        return f"无法写入配置文件: {error}"
-    return None
-
-
 # ── Message formatting ──
 def normalize_assistant_message(message):
     normalized = {
@@ -309,7 +277,7 @@ def collect_streaming_message(response):
 
 
 async def main():
-    global CONTEXT_WINDOW_SIZE, current_context_usage, current_code_theme
+    global CONTEXT_WINDOW_SIZE, current_context_usage
 
     try:
         project_config = load_project_config(args.config.resolve())
@@ -325,13 +293,7 @@ async def main():
         raise SystemExit(f"配置错误: {error}") from error
 
     # 从配置文件恢复上次保存的 Markdown 代码块主题
-    current_code_theme = project_config.get("theme") or "monokai"
-    if current_code_theme not in CODE_THEMES:
-        cprint(
-            f"配置中的主题无效: {current_code_theme},已回退到 monokai",
-            color="yellow",
-        )
-        current_code_theme = "monokai"
+    load_theme(project_config)
 
     client = OpenAI(
         base_url=get_setting(config_env, "base_url", "https://api.deepseek.com"),
@@ -390,13 +352,13 @@ async def main():
                 continue
             if user_input.strip().startswith("/theme "):
                 new_theme = user_input.strip().split(maxsplit=1)[1]
-                if new_theme not in CODE_THEMES:
-                    cprint(f"未知主题: {new_theme}", color="yellow")
+                theme_error = set_theme(new_theme)
+                if theme_error:
+                    cprint(theme_error, color="yellow")
                     print_theme_options()
                 else:
-                    current_code_theme = new_theme
                     cprint(f"已切换代码块主题: {new_theme}", color="green")
-                    save_error = save_theme_setting(new_theme)
+                    save_error = save_theme_setting(args.config)
                     if save_error:
                         cprint(
                             f"保存到配置文件失败: {save_error}(本次会话仍生效)",
