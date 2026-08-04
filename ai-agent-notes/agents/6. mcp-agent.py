@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from openai import OpenAI
 from agent_tools import execute_agent_tool, SKILL_TOOLS
 from agent_tools import tools as base_tools
-from terminal_utils import clear_screen, cprint, print_messages
+from terminal_utils import clear_screen, cprint, print_messages, print_tool_list
 from skill_catalog import scan_skill_catalog
 from mcp_client import MCPClient, load_mcp_servers
 from code_theme import (
@@ -98,22 +98,6 @@ def print_slash_commands():
     print("可用命令：")
     for command, description in SLASH_COMMANDS:
         print(f"  {command:<10} {description}")
-    print()
-
-
-def print_tool_list(title, tool_list):
-    print(f"{title}（{len(tool_list)}）：")
-    if not tool_list:
-        print("  (none)\n")
-        return
-
-    for tool in tool_list:
-        function = tool["function"]
-        print("  ", end="")
-        # Bright white for tool name (same as terminal_utils tool_calls)
-        print(f"\033[97m{function['name']}\033[0m", end="")
-        print(" - ", end="")
-        cprint(function.get("description") or "无描述", color="gray")
     print()
 
 
@@ -274,10 +258,10 @@ async def main():
                 print_slash_commands()
                 continue
             if user_input.strip() == "/tools":
-                print_tool_list("本地工具", base_tools + SKILL_TOOLS)
+                print_tool_list(base_tools + SKILL_TOOLS, "本地工具")
                 continue
             if user_input.strip() == "/mcp":
-                print_tool_list("MCP 工具", mcp_client.tools)
+                print_tool_list(mcp_client.tools, "MCP 工具")
                 continue
             if user_input.strip() == "/debug":
                 print_messages(messages)

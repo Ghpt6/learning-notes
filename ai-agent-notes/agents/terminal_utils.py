@@ -196,3 +196,46 @@ def print_messages(messages, title="Debug Messages"):
 
     # Bottom border
     cprint(f"╚{'═' * width}╝", color="gray")
+
+
+def print_tool_list(tool_list, title="工具列表"):
+    """Print tool definitions inside the same formatted box as print_messages.
+
+    Each tool gets a header row with its bright-white name (light-green
+    border, matching the tool accent used elsewhere), followed by its
+    description wrapped and indented like message content.
+    """
+    try:
+        width = max(1, os.get_terminal_size().columns - 2)
+    except OSError:
+        width = 80
+
+    # Top border with centered title
+    header = f"{title}（{len(tool_list)}）"
+    header = _wrap_display_line(header, width)[0]
+    pad = max(0, width - _display_width(header))
+    left = pad // 2
+    right = pad - left
+    cprint(f"╔{'═' * left}{header}{'═' * right}╗", color="gray")
+
+    for i, tool in enumerate(tool_list):
+        function = tool.get("function", {})
+        name = function.get("name", "?")
+        description = function.get("description") or "无描述"
+
+        # Tool name row, bright white name like terminal_utils tool_calls
+        name_colored = f"\033[97m{name}\033[0m"
+        tag = f" [{i + 1}] {name_colored} "
+        tag = _wrap_display_line(tag, width)[0]
+        tag_width = _display_width(tag)
+        cprint(f"║{tag}{'─' * max(0, width - tag_width)}║", color="light_green")
+
+        # Description wrapped like message content (2-space indent)
+        for line in description.split("\n") or [""]:
+            _print_boxed_line(f"  {line}" if line else "", width, color="gray")
+
+    if not tool_list:
+        _print_boxed_line("  (none)", width, color="gray")
+
+    # Bottom border
+    cprint(f"╚{'═' * width}╝", color="gray")
