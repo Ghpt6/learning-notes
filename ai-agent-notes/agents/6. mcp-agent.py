@@ -235,7 +235,10 @@ async def main():
 
         # ── Agent core loop ──
         while True:
-            user_input = input("> ")
+            try:
+                user_input = input("> ")
+            except EOFError:
+                break
             if user_input.strip() == "/help":
                 print_slash_commands()
                 continue
@@ -313,4 +316,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nbye！")
+        print("\nbye!")
