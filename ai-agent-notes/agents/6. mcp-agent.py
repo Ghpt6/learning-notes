@@ -86,6 +86,36 @@ def build_system_prompt(catalog, mcp_tools):
     return "\n".join(lines)
 
 
+SLASH_COMMANDS = [
+    ("/help", "列出所有 slash 命令"),
+    ("/tool", "列出所有本地工具（不包含 MCP）"),
+    ("/mcp", "列出所有 MCP 工具"),
+    ("/debug", "打印当前会话消息"),
+    ("/context", "显示当前上下文使用情况"),
+    ("/clear", "清空当前会话"),
+]
+
+
+def print_slash_commands():
+    print("可用命令：")
+    for command, description in SLASH_COMMANDS:
+        print(f"  {command:<10} {description}")
+    print()
+
+
+def print_tool_list(title, tool_list):
+    print(f"{title}（{len(tool_list)}）：")
+    if not tool_list:
+        print("  (none)\n")
+        return
+
+    for tool in tool_list:
+        function = tool["function"]
+        description = function.get("description") or "无描述"
+        print(f"  {function['name']} - {description}")
+    print()
+
+
 # ── Message formatting ──
 def normalize_assistant_message(message):
     normalized = {
@@ -203,6 +233,15 @@ async def main():
         # ── Agent core loop ──
         while True:
             user_input = input("> ")
+            if user_input.strip() == "/help":
+                print_slash_commands()
+                continue
+            if user_input.strip() == "/tool":
+                print_tool_list("本地工具", base_tools + SKILL_TOOLS)
+                continue
+            if user_input.strip() == "/mcp":
+                print_tool_list("MCP 工具", mcp_client.tools)
+                continue
             if user_input.strip() == "/debug":
                 print_messages(messages)
                 print()
