@@ -9,45 +9,57 @@ from terminal_utils import cprint
 
 DEFAULT_THEME = "monokai"
 CODE_THEMES = sorted(get_all_styles())
-THEME_DEMO = """# 一级标题 Heading 1
-
-## 二级标题 Heading 2
-
-### 三级标题 Heading 3
-
-#### 四级标题 Heading 4
-
----
-
-**加粗文本** 与 **bold**, *斜体文本* 与 *italic*, ***粗斜体***, ~~删除线~~, `行内代码`。
-
-[普通链接](https://example.com) 和 **加粗链接**: [文档首页](https://example.com/docs)
-
-> 引用块:这是一段引用的内容,
-> 可以**换行**继续写,也可以 `代码`。
-
-- 无序列表项一
-- 无序列表项二
-  - 嵌套子项
-  - 嵌套子项
-- 无序列表项三
-
-1. 有序列表项一
-2. 有序列表项二
-3. 有序列表项三
-
-| 列 A | 列 B | 列 C |
-| :--- | :---: | ---: |
-| 左对齐 | 居中 | 右对齐 |
-| `code` | **bold** | [link](https://example.com) |
-
----
-
-一段包含 `行内代码`、**粗体**、*斜体* 与 [链接](https://example.com) 的正文,末尾跟一个代码块:
-
+THEME_DEMO = """
 ```python
-print("hello, world!")
-print("你好，世界！")
+import os
+from pathlib import Path
+
+# 常量与装饰器
+MAX_RETRIES = 3
+BASE_URL = "https://api.example.com/v1"
+
+@staticmethod
+def greet(name: str) -> str:
+    \"\"\"返回问候语\"\"\"
+    return f"你好，{name}！"
+
+class Agent:
+    def __init__(self, model: str, temperature: float = 0.7):
+        self.model = model
+        self.temperature = temperature
+        self._history: list[str] = []
+
+    async def run(self, prompt: str) -> dict | None:
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                response = await self._call_api(prompt)
+                self._history.append(response)
+                return {"status": "ok", "data": response}
+            except TimeoutError as error:
+                print(f"[{attempt}/{MAX_RETRIES}] 请求超时: {error}")
+        return None
+```
+
+```javascript
+// 工具注册示例
+const tools = [
+  { name: "read_file",   description: "读取文件内容" },
+  { name: "write_file",  description: "写入文件内容" },
+  { name: "search_code", description: "搜索代码片段" },
+];
+
+async function executeTool(name, args) {
+  const tool = tools.find(t => t.name === name);
+  if (!tool) throw new Error(`Unknown tool: ${name}`);
+  const result = await tool.handler(args);
+  return { tool, result, timestamp: Date.now() };
+}
+```
+
+```bash
+# 启动 Agent 并加载配置
+export AGENT_MODEL="gpt-4o"
+python -m agent.main --config ./config.json --verbose
 ```
 """
 
