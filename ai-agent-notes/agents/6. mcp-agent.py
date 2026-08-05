@@ -14,11 +14,18 @@ from code_theme import (
     save_theme_setting,
     set_theme,
 )
+from markdown_theme import (
+    MARKDOWN_THEME_DEMO,
+    get_themed_console,
+    load_markdown_theme,
+    print_markdown_theme_options,
+    save_markdown_theme_setting,
+    set_markdown_theme,
+)
 from app_config import apply_env, get_setting, load_project_config, parse_args
-from rich.console import Console
 from rich.live import Live
 
-_rich_console = Console()
+_rich_console = get_themed_console()
 
 args = parse_args()
 
@@ -91,6 +98,7 @@ SLASH_COMMANDS = [
     ("/context", "显示当前上下文使用情况"),
     ("/clear", "清空当前会话"),
     ("/code-theme", "切换并保存 Markdown 代码块配色 (/code-theme <名字>)"),
+    ("/theme", "切换并保存 Markdown 整体样式 (/theme <名字>)"),
 ]
 
 
@@ -204,7 +212,7 @@ def collect_streaming_message(response):
 
 
 async def main():
-    global CONTEXT_WINDOW_SIZE, current_context_usage
+    global CONTEXT_WINDOW_SIZE, current_context_usage, _rich_console
 
     try:
         project_config = load_project_config(args.config.resolve())
@@ -219,8 +227,10 @@ async def main():
     except (TypeError, ValueError) as error:
         raise SystemExit(f"配置错误: {error}") from error
 
-    # 从配置文件恢复上次保存的 Markdown 代码块主题
+    # 从配置文件恢复上次保存的主题设置
     load_theme(project_config)
+    load_markdown_theme(project_config)
+    _rich_console = get_themed_console()
 
     client = OpenAI(
         base_url=get_setting(config_env, "base_url", "https://api.deepseek.com"),
@@ -293,6 +303,26 @@ async def main():
                             color="yellow",
                         )
                     _rich_console.print(render_markdown(THEME_DEMO))
+                continue
+            if user_input.strip() == "/theme":
+                print_markdown_theme_options()
+                continue
+            if user_input.strip().startswith("/theme "):
+                new_theme = user_input.strip().split(maxsplit=1)[1]
+                theme_error = set_markdown_theme(new_theme)
+                if theme_error:
+                    cprint(theme_error, color="yellow")
+                    print_markdown_theme_options()
+                else:
+                    cprint(f"已切换 Markdown 主题: {new_theme}", color="green")
+                    save_error = save_markdown_theme_setting(args.config)
+                    if save_error:
+                        cprint(
+                            f"保存到配置文件失败: {save_error}(本次会话仍生效)",
+                            color="yellow",
+                        )
+                    _rich_console = get_themed_console()
+                    _rich_console.print(render_markdown(MARKDOWN_THEME_DEMO))
                 continue
             if user_input.strip().startswith("/"):
                 print(f"未知命令: {user_input.strip()}\n")

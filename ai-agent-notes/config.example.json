@@ -16,5 +16,6 @@
             "httpUrl": "xxx"
         }
     },
-    "theme": "monokai"
+    "theme": "monokai",
+    "markdownTheme": "default"
 }
