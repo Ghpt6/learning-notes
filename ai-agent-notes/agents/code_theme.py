@@ -1,4 +1,4 @@
-"""Markdown 代码块配色主题管理(/theme 命令相关逻辑)。"""
+"""Markdown 代码块配色主题管理(/code-theme 命令相关逻辑)。"""
 
 import json
 
@@ -106,4 +106,4 @@ def print_theme_options():
     for name in CODE_THEMES:
         marker = "  (当前)" if name == _current_theme else ""
         print(f"  {name:<18}{marker}")
-    print("\n切换: /theme <主题名>")
+    print("\n切换: /code-theme <主题名>")

@@ -90,7 +90,7 @@ SLASH_COMMANDS = [
     ("/debug", "打印当前会话消息"),
     ("/context", "显示当前上下文使用情况"),
     ("/clear", "清空当前会话"),
-    ("/theme", "切换并保存 Markdown 代码块配色 (/theme <名字>)"),
+    ("/code-theme", "切换并保存 Markdown 代码块配色 (/code-theme <名字>)"),
 ]
 
 
@@ -275,10 +275,10 @@ async def main():
             if user_input.strip() == "/context":
                 print_current_context()
                 continue
-            if user_input.strip() == "/theme":
+            if user_input.strip() == "/code-theme":
                 print_theme_options()
                 continue
-            if user_input.strip().startswith("/theme "):
+            if user_input.strip().startswith("/code-theme "):
                 new_theme = user_input.strip().split(maxsplit=1)[1]
                 theme_error = set_theme(new_theme)
                 if theme_error:
