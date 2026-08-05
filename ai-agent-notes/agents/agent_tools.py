@@ -557,7 +557,6 @@ def execute_agent_tool(
     messages,
     compression_client,
     compression_model,
-    debug=True,
     compress_fetch=False,
 ):
     """Execute a tool and context-compress successful webpage results."""
@@ -575,28 +574,30 @@ def execute_agent_tool(
         current_context=recent_conversation_context(messages),
     )
 
-    if debug:
+    cprint(
+        f"\n===== fetch_webpage 原文（{compressed.original_length:,} 字符）=====",
+        color="cyan",
+    )
+    print(result)
+    ratio = (
+        compressed.compressed_length / compressed.original_length * 100
+        if compressed.original_length
+        else 0
+    )
+    cprint(
+        "===== CONTEXT_AWARE 压缩后 "
+        f"（{compressed.original_length:,} → "
+        f"{compressed.compressed_length:,} 字符, "
+        f"压缩率 {ratio:.1f}%）=====",
+        color="magenta",
+    )
+    print(compressed.content)
+    if compressed.used_fallback:
+        reason = compressed.error or "网页抓取未成功或正文为空"
         cprint(
-            f"\n===== fetch_webpage 原文（{compressed.original_length:,} 字符）=====",
-            color="cyan",
+            f"[压缩回退] {reason}",
+            color="yellow",
         )
-        print(result)
-        ratio = (
-            compressed.compressed_length / compressed.original_length * 100
-            if compressed.original_length
-            else 0
-        )
-        cprint(
-            "===== CONTEXT_AWARE 压缩后 "
-            f"（{compressed.original_length:,} → "
-            f"{compressed.compressed_length:,} 字符, "
-            f"压缩率 {ratio:.1f}%）=====",
-            color="magenta",
-        )
-        print(compressed.content)
-        if compressed.used_fallback:
-            reason = compressed.error or "网页抓取未成功或正文为空"
-            cprint(f"[压缩回退] {reason}", color="yellow")
-        print()
+    print()
 
     return compressed.content

@@ -310,10 +310,6 @@ async def main():
                 if assistant_message.usage is not None:
                     current_context_usage = assistant_message.usage
 
-                if args.debug:
-                    print_messages(messages)
-                    print()
-
                 if not assistant_message.tool_calls:
                     break
 
@@ -336,7 +332,6 @@ async def main():
                             messages=messages,
                             compression_client=client,
                             compression_model=model,
-                            debug=args.debug,
                             compress_fetch=args.compress_fetch,
                         )
 

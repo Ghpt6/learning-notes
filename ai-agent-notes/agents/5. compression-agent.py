@@ -219,7 +219,6 @@ try:
                     messages=messages,
                     compression_client=client,
                     compression_model=os.getenv("model"),
-                    debug=args.debug,
                     compress_fetch=args.compress_fetch,
                 )
 

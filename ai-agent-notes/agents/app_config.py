@@ -11,7 +11,6 @@ DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config.json"
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("--debug", action="store_true", help="Enable debug message output")
     parser.add_argument("--compress-fetch", action="store_true", help="Enable fetch_webpage tool compression")
     parser.add_argument(
         "--config",
