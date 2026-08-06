@@ -97,6 +97,7 @@ SLASH_COMMANDS = [
     ("/debug", "打印当前会话消息"),
     ("/context", "显示当前上下文使用情况"),
     ("/clear", "清空当前会话"),
+    ("/rewind", "回退到用户的上一次提问"),
     ("/code-theme", "切换并保存 Markdown 代码块配色 (/code-theme <名字>)"),
     ("/theme", "切换并保存 Markdown 整体样式 (/theme <名字>)"),
 ]
@@ -281,6 +282,21 @@ async def main():
                 messages = [messages[0]]
                 clear_screen()
                 print("会话已清理\n")
+                continue
+            if user_input.strip() == "/rewind":
+                # 撤销最近一轮对话（最近一次提问及其回答/工具调用），
+                # 会话回到用户上一次提问结束后的状态
+                last_user_index = None
+                for i in range(len(messages) - 1, 0, -1):
+                    if messages[i]["role"] == "user":
+                        last_user_index = i
+                        break
+                if last_user_index is None:
+                    print("当前没有可回退的上一次提问\n")
+                else:
+                    removed = len(messages) - last_user_index
+                    messages = messages[:last_user_index]
+                    print(f"已回退到上一次提问（移除了 {removed} 条消息）\n")
                 continue
             if user_input.strip() == "/context":
                 print_current_context()
