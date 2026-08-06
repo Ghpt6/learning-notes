@@ -100,6 +100,7 @@ SLASH_COMMANDS = [
     ("/rewind", "回退到用户的上一次提问"),
     ("/code-theme", "切换并保存 Markdown 代码块配色 (/code-theme <名字>)"),
     ("/theme", "切换并保存 Markdown 整体样式 (/theme <名字>)"),
+    ("/exit", "退出程序"),
 ]
 
 
@@ -265,6 +266,9 @@ async def main():
                 user_input = input("> ")
             except EOFError:
                 break
+            if user_input.strip() == "/exit":
+                print("bye!")
+                return
             if user_input.strip() == "/help":
                 print_slash_commands()
                 continue
