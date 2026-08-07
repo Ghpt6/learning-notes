@@ -1,4 +1,7 @@
 import asyncio
+import json
+import os
+from datetime import datetime
 from types import SimpleNamespace
 from openai import OpenAI
 from agent_tools import execute_agent_tool, SKILL_TOOLS
@@ -98,6 +101,7 @@ SLASH_COMMANDS = [
     ("/context", "显示当前上下文使用情况"),
     ("/clear", "清空当前会话"),
     ("/rewind", "回退到用户的上一次提问"),
+    ("/export", "导出当前对话到 JSONL 文件"),
     ("/code-theme", "切换并保存 Markdown 代码块配色 (/code-theme <名字>)"),
     ("/theme", "切换并保存 Markdown 整体样式 (/theme <名字>)"),
     ("/exit", "退出程序"),
@@ -133,6 +137,26 @@ def normalize_assistant_message(message):
         ]
 
     return normalized
+
+
+def export_messages(messages):
+    """Export conversation messages (excluding system prompts) to a JSONL file."""
+    output_dir = os.path.join(os.path.expanduser("~"), "Desktop", "output")
+    os.makedirs(output_dir, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"chat_{timestamp}.jsonl"
+    filepath = os.path.join(output_dir, filename)
+
+    exported_count = 0
+    with open(filepath, "w", encoding="utf-8") as f:
+        for message in messages:
+            if message["role"] == "system":
+                continue
+            f.write(json.dumps(message, ensure_ascii=False) + "\n")
+            exported_count += 1
+
+    return filepath, exported_count
 
 
 def collect_streaming_message(response):
@@ -304,6 +328,10 @@ async def main():
                 continue
             if user_input.strip() == "/context":
                 print_current_context()
+                continue
+            if user_input.strip() == "/export":
+                filepath, count = export_messages(messages)
+                print(f"已导出 {count} 条消息到: {filepath}\n")
                 continue
             if user_input.strip() == "/code-theme":
                 print_theme_options()
