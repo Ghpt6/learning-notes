@@ -12,6 +12,7 @@ def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--compress-fetch", action="store_true", help="Enable fetch_webpage tool compression")
+    parser.add_argument("--no-mcp", action="store_true", help="启动时不加载任何 MCP 服务器")
     parser.add_argument(
         "--config",
         type=Path,

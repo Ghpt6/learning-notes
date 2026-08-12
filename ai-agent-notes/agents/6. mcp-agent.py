@@ -246,7 +246,7 @@ async def main():
         # Make every configured value available to local tools and MCP child
         # processes, while keeping the change scoped to this Python process.
         apply_env(config_env)
-        mcp_servers = load_mcp_servers(project_config)
+        mcp_servers = {} if args.no_mcp else load_mcp_servers(project_config)
         CONTEXT_WINDOW_SIZE = int(
             get_setting(config_env, "CONTEXT_WINDOW_SIZE", "128000")
         )
@@ -268,6 +268,8 @@ async def main():
     skill_catalog = scan_skill_catalog()
 
     async with MCPClient(mcp_servers) as mcp_client:
+        if args.no_mcp:
+            cprint("[MCP] 已通过 --no-mcp 跳过加载", color="yellow")
         for error in mcp_client.errors:
             cprint(f"[MCP] 连接失败: {error}", color="yellow")
         if mcp_client.tools:
@@ -374,6 +376,7 @@ async def main():
                 continue
             if user_input.strip().startswith("/"):
                 print(f"未知命令: {user_input.strip()}\n")
+                print_slash_commands()
                 continue
             messages.append({"role": "user", "content": user_input})
 
