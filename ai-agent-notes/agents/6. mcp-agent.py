@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import time
 from datetime import datetime
 from types import SimpleNamespace
 from openai import OpenAI
@@ -34,6 +35,11 @@ args = parse_args()
 
 CONTEXT_WINDOW_SIZE = 128000
 current_context_usage = None
+
+# Rebuilding a Rich Markdown object reparses all text received so far.  Doing
+# that for every token makes long streamed answers progressively slower, so
+# cap the expensive rebuilds while keeping the display responsive.
+STREAM_RENDER_INTERVAL = 0.125
 
 
 def print_current_context():
@@ -165,55 +171,74 @@ def collect_streaming_message(response):
     tool_calls = {}
     content_started = False
     usage = None
+    last_render_at = 0.0
+    last_rendered_length = 0
 
-    # Stream assistant output as live-rendered markdown (headings, bold,
-    # code blocks). transient=True clears the streaming view on stop so
-    # the final complete render can be printed afterwards.
-    live = Live(render_markdown(""), console=_rich_console, refresh_per_second=8,
-                transient=True)
+    # Keep the completed Live render in the terminal. Printing the full answer
+    # again after stopping Live duplicates any lines that already scrolled past
+    # the top of the live region on long responses.
+    live = Live(
+        render_markdown(""),
+        console=_rich_console,
+        auto_refresh=False,
+        transient=False,
+    )
 
-    for chunk in response:
-        if getattr(chunk, "usage", None) is not None:
-            usage = chunk.usage
+    try:
+        for chunk in response:
+            if getattr(chunk, "usage", None) is not None:
+                usage = chunk.usage
 
-        if not chunk.choices:
-            continue
+            if not chunk.choices:
+                continue
 
-        delta = chunk.choices[0].delta
-        reasoning_delta = getattr(delta, "reasoning_content", None)
-        content_delta = getattr(delta, "content", None)
+            delta = chunk.choices[0].delta
+            reasoning_delta = getattr(delta, "reasoning_content", None)
+            content_delta = getattr(delta, "content", None)
 
-        if reasoning_delta:
-            reasoning_content += reasoning_delta
-            cprint(reasoning_delta, color="gray", end="", flush=True)
+            if reasoning_delta:
+                reasoning_content += reasoning_delta
+                cprint(reasoning_delta, color="gray", end="", flush=True)
 
-        if content_delta:
-            content += content_delta
-            if not content_started:
-                if reasoning_content:
-                    print()
-                live.start()
-                content_started = True
-            live.update(render_markdown(content))
+            if content_delta:
+                content += content_delta
+                if not content_started:
+                    if reasoning_content:
+                        print()
+                    live.start(refresh=False)
+                    content_started = True
 
-        for tool_call_delta in getattr(delta, "tool_calls", None) or []:
-            tool_call = tool_calls.setdefault(
-                tool_call_delta.index,
-                {"id": "", "type": "function", "name": "", "arguments": ""},
-            )
-            if tool_call_delta.id:
-                tool_call["id"] = tool_call_delta.id
-            if tool_call_delta.type:
-                tool_call["type"] = tool_call_delta.type
-            if tool_call_delta.function:
-                tool_call["name"] += tool_call_delta.function.name or ""
-                tool_call["arguments"] += tool_call_delta.function.arguments or ""
+                now = time.monotonic()
+                if now - last_render_at >= STREAM_RENDER_INTERVAL:
+                    live.update(render_markdown(content), refresh=True)
+                    last_rendered_length = len(content)
+                    # Measure the interval from the end of the potentially
+                    # expensive render. Otherwise a slow render could make the
+                    # next chunk immediately trigger another full rebuild.
+                    last_render_at = time.monotonic()
 
-    if content_started:
-        # The streaming view may be truncated on long responses; reprint the
-        # complete markdown once streaming finishes.
-        live.stop()
-        _rich_console.print(render_markdown(content))
+            for tool_call_delta in getattr(delta, "tool_calls", None) or []:
+                tool_call = tool_calls.setdefault(
+                    tool_call_delta.index,
+                    {"id": "", "type": "function", "name": "", "arguments": ""},
+                )
+                if tool_call_delta.id:
+                    tool_call["id"] = tool_call_delta.id
+                if tool_call_delta.type:
+                    tool_call["type"] = tool_call_delta.type
+                if tool_call_delta.function:
+                    tool_call["name"] += tool_call_delta.function.name or ""
+                    tool_call["arguments"] += tool_call_delta.function.arguments or ""
+    finally:
+        if content_started:
+            # The last chunk may arrive inside the throttle interval. Update it
+            # once without printing a second copy; stop() performs the final
+            # visible refresh and restores the cursor even after stream errors.
+            try:
+                if len(content) != last_rendered_length:
+                    live.update(render_markdown(content), refresh=False)
+            finally:
+                live.stop()
 
     if reasoning_content or content:
         print()
