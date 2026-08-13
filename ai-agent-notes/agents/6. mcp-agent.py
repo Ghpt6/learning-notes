@@ -4,7 +4,10 @@ import os
 import time
 from datetime import datetime
 from types import SimpleNamespace
+import keyboard
 from openai import OpenAI
+from prompt_toolkit import PromptSession
+from prompt_toolkit.key_binding import KeyBindings
 from agent_tools import execute_agent_tool, SKILL_TOOLS
 from agent_tools import tools as base_tools
 from terminal_utils import clear_screen, cprint, print_messages, print_tool_list
@@ -40,6 +43,36 @@ current_context_usage = None
 # that for every token makes long streamed answers progressively slower, so
 # cap the expensive rebuilds while keeping the display responsive.
 STREAM_RENDER_INTERVAL = 0.125
+
+
+def multiline_input(prompt="> "):
+    """Shift+Enter inserts a newline; Enter submits."""
+    shift_down = False
+
+    def observe_key(event):
+        nonlocal shift_down
+        if event.name in ("shift", "left shift", "right shift"):
+            shift_down = event.event_type == keyboard.KEY_DOWN
+        return True  # Let Windows and the IME receive every key.
+
+    bindings = KeyBindings()
+
+    @bindings.add("enter")
+    def handle_enter(event):
+        if shift_down:
+            event.current_buffer.insert_text("\n")
+        else:
+            event.current_buffer.validate_and_handle()
+
+    hook = keyboard.hook(observe_key, suppress=True)
+    try:
+        return PromptSession(
+            multiline=True,
+            key_bindings=bindings,
+            prompt_continuation="... ",
+        ).prompt(prompt, in_thread=True)
+    finally:
+        keyboard.unhook(hook)
 
 
 def print_current_context():
@@ -314,7 +347,7 @@ async def main():
         # ── Agent core loop ──
         while True:
             try:
-                user_input = input("> ")
+                user_input = multiline_input()
             except EOFError:
                 break
             if user_input.strip() == "/exit":
