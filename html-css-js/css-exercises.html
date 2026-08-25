@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flex / Grid 练习题（空白版）</title>
+<style>
+  /* ===== 公共样式（不用改） ===== */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Microsoft YaHei", sans-serif; background: #f0f2f5; padding: 24px; }
+  h1 { margin-bottom: 8px; }
+  .tip { color: #888; margin-bottom: 24px; }
+  section { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 32px; }
+  h2 { font-size: 17px; margin-bottom: 4px; }
+  .req { color: #666; font-size: 14px; margin-bottom: 12px; line-height: 1.6; }
+  .req code { background: #f0f0f0; padding: 1px 6px; border-radius: 4px; color: #d63384; }
+  .stage { border: 2px dashed #bbb; border-radius: 8px; padding: 12px; }
+  .box { background: #4c8dff; color: #fff; border-radius: 6px; padding: 12px 16px; text-align: center; }
+  .box.o { background: #ff8a4c; }
+  .box.g { background: #3fbf7f; }
+
+  /* ============================================================
+     练习 1：在 .ex1 里写 CSS，让蓝色方块在容器中水平 + 垂直居中
+     ============================================================ */
+  .ex1 {
+    /* 在这里作答 ↓ */
+    height: 200px;
+  }
+
+
+  /* ============================================================
+     练习 2：导航栏
+     - 容器 .ex2 使用 flex，子项垂直居中
+     - logo 靠左，菜单组靠右，两者拉开（两端对齐）
+     - 菜单项 .nav-link 之间间距 20px（用 gap，不用 margin）
+     ============================================================ */
+  .ex2 .logo { font-weight: bold; font-size: 18px; color: #333; }
+  .ex2 .nav-link { color: #555; }
+  .ex2 {
+    /* 在这里作答 ↓ */
+  }
+
+
+  /* ============================================================
+     练习 3：三栏布局
+     - 左栏 .side-l 和右栏 .side-r 固定宽 160px
+     - 中间 .main 占满剩余空间
+     - 三栏之间的间距为 12px
+     ============================================================ */
+  .ex3 {
+    /* 在这里作答 ↓ */
+  }
+
+
+  /* ============================================================
+     练习 4：卡片换行
+     - 卡片容器 .ex4 允许换行
+     - 每张卡片 .card 宽 120px，间距 12px
+     - 缩小浏览器窗口观察换行效果
+     ============================================================ */
+  .ex4 .card { background: #8e6cf0; color: #fff; border-radius: 6px; padding: 16px; text-align: center; }
+  .ex4 {
+    /* 在这里作答 ↓ */
+  }
+
+
+  /* ============================================================
+     练习 5：Sticky Footer（内容不足一屏时，footer 也贴底）
+     - .ex5 高 300px，纵向 flex 布局
+     - .content 占满剩余空间，把 .footer 顶到底部
+     ============================================================ */
+  .ex5 {
+    /* 在这里作答 ↓ */
+    height: 300px;
+  }
+  .ex5 .content { background: #e8f0fe; padding: 12px; }
+  .ex5 .footer { background: #333; color: #fff; padding: 10px; text-align: center; }
+
+
+  /* ============================================================
+     练习 6（Grid）：九宫格
+     - .ex6 排成 3 列 3 行，每格等宽，间距 10px
+     ============================================================ */
+  .ex6 {
+    /* 在这里作答 ↓ */
+  }
+
+
+  /* ============================================================
+     练习 7（Grid）：圣杯布局
+     - 用 grid-template-areas 实现：
+         header 占满顶部一行
+         sidebar(160px) + main(自适应) 占中间
+         footer 占满底部一行
+     - 整体高度 260px
+     ============================================================ */
+  .ex7 .hd  { background: #4c8dff; color: #fff; padding: 10px; }
+  .ex7 .sd  { background: #ff8a4c; color: #fff; padding: 10px; }
+  .ex7 .mn  { background: #e8f0fe; padding: 10px; }
+  .ex7 .ft  { background: #333; color: #fff; padding: 10px; }
+  .ex7 {
+    /* 在这里作答 ↓ */
+  }
+
+
+  /* ============================================================
+     练习 8（Grid）：响应式相册
+     - 不写媒体查询，让每列最小 140px，空间不足自动减少列数
+     - 间距 10px（提示：repeat + auto-fill + minmax）
+     ============================================================ */
+  .ex8 .ph { background: #3fbf7f; color: #fff; border-radius: 6px; padding: 24px 0; text-align: center; }
+  .ex8 {
+    /* 在这里作答 ↓ */
+  }
+
+
+  /* ============================================================
+     练习 9（Grid）：仪表盘
+     - .ex9 为 4 列网格，间距 10px
+     - 卡片 A 横跨 2 列，卡片 B 纵跨 2 行
+     ============================================================ */
+  .ex9 .box { padding: 20px; }
+  .ex9 {
+    /* 在这里作答 ↓ */
+  }
+
+</style>
+</head>
+<body>
+<h1>Flex / Grid 练习题</h1>
+<p class="tip">在 &lt;style&gt; 中找到对应练习的注释处作答，保存后刷新浏览器查看效果。答案见 solutions.html</p>
+
+<section>
+  <h2>练习 1：万能居中（Flex）</h2>
+  <p class="req">让蓝色方块在虚线容器（高 200px）中水平、垂直都居中。</p>
+  <div class="stage ex1">
+    <div class="box" style="width:120px;">居中我</div>
+  </div>
+</section>
+
+<section>
+  <h2>练习 2：导航栏（Flex）</h2>
+  <p class="req">logo 靠左、菜单靠右，全部垂直居中；菜单项之间用 <code>gap: 20px</code>。</p>
+  <div class="stage ex2">
+    <span class="logo">MySite</span>
+    <span class="nav-link">首页</span>
+    <span class="nav-link">产品</span>
+    <span class="nav-link">关于</span>
+  </div>
+</section>
+
+<section>
+  <h2>练习 3：三栏布局（Flex）</h2>
+  <p class="req">左右各 <code>160px</code>，中间自适应填满，栏间距 <code>12px</code>。</p>
+  <div class="stage ex3">
+    <div class="box side-l">左栏</div>
+    <div class="box g main">主内容</div>
+    <div class="box o side-r">右栏</div>
+  </div>
+</section>
+
+<section>
+  <h2>练习 4：卡片换行（Flex）</h2>
+  <p class="req">卡片宽 <code>120px</code>、间距 <code>12px</code>，放不下时自动换行。</p>
+  <div class="stage ex4">
+    <div class="card">卡1</div>
+    <div class="card">卡2</div>
+    <div class="card">卡3</div>
+    <div class="card">卡4</div>
+    <div class="card">卡5</div>
+    <div class="card">卡6</div>
+  </div>
+</section>
+
+<section>
+  <h2>练习 5：Sticky Footer（Flex 纵向）</h2>
+  <p class="req">容器高 300px，内容很少时 footer 也要贴底（提示：<code>flex: 1</code>）。</p>
+  <div class="stage ex5">
+    <div class="content">内容区（很少的内容）</div>
+    <div class="footer">Footer 必须贴底</div>
+  </div>
+</section>
+
+<section>
+  <h2>练习 6：九宫格（Grid）</h2>
+  <p class="req">3×3 等宽网格，间距 <code>10px</code>。</p>
+  <div class="stage ex6">
+    <div class="box">1</div><div class="box o">2</div><div class="box g">3</div>
+    <div class="box g">4</div><div class="box">5</div><div class="box o">6</div>
+    <div class="box o">7</div><div class="box g">8</div><div class="box">9</div>
+  </div>
+</section>
+
+<section>
+  <h2>练习 7：圣杯布局（Grid areas）</h2>
+  <p class="req">用 <code>grid-template-areas</code> 实现 header / sidebar(160px)+main / footer，高 260px。</p>
+  <div class="stage ex7">
+    <div class="hd">header</div>
+    <div class="sd">sidebar</div>
+    <div class="mn">main</div>
+    <div class="ft">footer</div>
+  </div>
+</section>
+
+<section>
+  <h2>练习 8：响应式相册（Grid）</h2>
+  <p class="req">不用媒体查询：每列最小 <code>140px</code>，窗口变窄自动减列。拖动窗口试试。</p>
+  <div class="stage ex8">
+    <div class="ph">图1</div><div class="ph">图2</div><div class="ph">图3</div>
+    <div class="ph">图4</div><div class="ph">图5</div><div class="ph">图6</div>
+    <div class="ph">图7</div><div class="ph">图8</div>
+  </div>
+</section>
+
+<section>
+  <h2>练习 9：仪表盘（Grid 跨行跨列）</h2>
+  <p class="req">4 列网格；卡片 A <code>grid-column: span 2</code>，卡片 B <code>grid-row: span 2</code>。</p>
+  <div class="stage ex9">
+    <div class="box a">A（跨2列）</div>
+    <div class="box o b">B（跨2行）</div>
+    <div class="box g">C</div>
+    <div class="box">D</div>
+    <div class="box o">E</div>
+    <div class="box g">F</div>
+  </div>
+</section>
+
+</body>
+</html>
