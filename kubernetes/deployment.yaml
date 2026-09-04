@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hellok8s-deployment
+spec:
+  replicas: 3 # 资源扩容到 3 个副本
+  selector:
+    matchLabels:
+      app: hellok8s
+  template: # 注意，这里面的就是 Pod 的定义（template）
+    metadata: 
+      labels: # 唯一的区别是我们需要加上 metadata.labels 来和上面的 selector.matchLabels 对应起来。来表明 pod 是被 deployment 管理
+        app: hellok8s 
+      # 不用在template 里面加上 metadata.name 是因为 deployment 会主动为我们创建 pod 的唯一name。
+    spec:
+      containers:
+        - image: areamautumn/hellok8s:v2
+          name: hellok8s-container

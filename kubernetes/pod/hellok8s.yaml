@@ -1,0 +1,9 @@
+# hellok8s.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hellok8s-pod
+spec:
+  containers:
+    - name: hellok8s-container
+      image: areamautumn/hellok8s:v1
