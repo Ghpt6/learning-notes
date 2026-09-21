@@ -11,6 +11,7 @@
 
 - 可以把pod看作一个独立的机器，一个pod中可以运行一个或者多个容器，这些容器之间共享相同的ip和port空间。
 - 一个pod的所有容器都运行在同一个woker node中，一个pod不会跨越两个worker node
+
 ![alt text](image.png)
 
 
@@ -25,6 +26,13 @@ Deployment：物业管理者，负责保证「这栋楼永远有 3 间房」，�
 
 当手动删除一个 pod 资源后，deployment 会自动创建一个新的 pod，这和我们之前手动创建 pod 资源有本质的区别！  
 这代表着当生产环境管理着成千上万个 pod 时，我们不需要关心具体的情况，只需要维护好这份 deployment.yaml 文件的资源定义即可。
+
+### 滚动更新
+如果我们在生产环境上，管理着多个副本的 hellok8s:v1 版本的 pod，我们需要更新到 v2 的版本，像上面那样的部署方式是可以的，但是也会带来一个问题，就是所有的副本在同一时间更新，这会导致我们 hellok8s 服务在短时间内是不可用的，因为所有 pod 都在升级到 v2 版本的过程中，需要等待某个 pod 升级完成后才能提供服务。
+
+设置 strategy=rollingUpdate , maxSurge=1 , maxUnavailable=1 和 replicas=3 到 deployment.yaml 文件中。这个参数配置意味着最大可能会创建 4 个 hellok8s pod (replicas + maxSurge)，最小会有 2 个 hellok8s pod 存活 (replicas - maxUnavailable)。
+
+![alt text](image-3.png)
 
 
 ## Service
