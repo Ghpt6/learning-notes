@@ -82,3 +82,22 @@ Value (V)：我实际"携带的信息":
 ![multi1](multi1.png)
 得到的更精确的embedding：
 ![multi2](multi2.png)
+
+
+## Multilayer perceptron(MLP)
+
+### Linear
+每一行都提出各种问题，探索当前这个embedding的其他各类特征  
+矩阵的总行数4*12288，可以看作被提问的数量
+![linear1](linear1.png)
+偏置：
+![bias](bias.jpg)
+
+### ReLU(rectified linear unit)
+可以想象成神经元是否激活
+![ReLU](ReLU.jpg)
+
+### Linear
+可以假设模型学会将第一列表示为“basketball”方向，当对应的第一个神经元n0处于激活状态，结果中就会加上这一列。
+其他列会告诉你，如果对应的神经元激活，最终结果中会加入哪些信息
+![linear2](linear2.jpg)
