@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>线性回归 · 代价函数</title>
+<link rel="icon" href="data:,">
+<style>
+  body { max-width:1080px; margin:24px auto; padding:0 16px; font:15px/1.6 system-ui,sans-serif; color:#243247; background:#fff; }
+  h1 { margin:0; font-size:24px; } p { margin:6px 0; } #value { color:#245caa; font-variant-numeric:tabular-nums; }
+  main { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; } .plot { height:340px; min-width:0; }
+  #surface { grid-column:1/-1; height:430px; } @media(max-width:650px) { main { grid-template-columns:1fr; } }
+</style>
+<h1>线性回归 · 代价函数</h1>
+<p>点击等高线图选择 w、b；拖动三维曲面旋转，滚轮缩放。</p>
+<p id="value" aria-live="polite">正在加载图形…</p>
+<main><div id="fit" class="plot"></div><div id="contour" class="plot"></div><div id="surface" class="plot"></div></main>
+<script src="./lib/plotly-3.3.0.min.js" onerror="document.getElementById('value').textContent='图形库加载失败，请检查 lib/plotly-3.3.0.min.js 文件是否存在。'"></script>
+<script>
+(async () => {
+  if (!window.Plotly) return;
+  // 原 notebook In [14] 的数据、初始参数和代价公式。
+  const x = [1,1.7,2,2.5,3,3.2], y = [250,300,480,430,630,730];
+  const cost = (w,b) => x.reduce((s,xi,i) => s + (w*xi+b-y[i])**2, 0)/(2*x.length);
+  const ws = Array.from({length:101}, (_,i) => -100+6*i), bs = ws.map(w => w-150);
+  const z = bs.map(b => ws.map(w => cost(w,b)));
+  const [fit,contour,surface,value] = ['fit','contour','surface','value'].map(id => document.getElementById(id));
+  const config = {responsive:true, displayModeBar:false};
+  const base = {margin:{l:60,r:20,t:48,b:55}, font:{family:'system-ui,sans-serif',color:'#243247'}, showlegend:false};
+  const axis = (text,range) => ({title:{text},range,fixedrange:true,zeroline:false});
+  const point = {color:'#dc4d35',size:10,line:{color:'#fff',width:1.5}};
+  try {
+    await Plotly.newPlot(fit, [
+      {x,y,type:'scatter',mode:'markers',marker:{color:'#dc4d35',symbol:'x',size:10},name:'实际房价'},
+      {x,y:[],mode:'lines',line:{color:'#2878b5',width:3},name:'预测房价'},
+      {x:[],y:[],mode:'lines',line:{color:'#9470b4',dash:'dot'},hoverinfo:'skip'}
+    ], {...base,title:{text:'房价与拟合直线'},xaxis:axis('面积（千平方英尺）',[0.7,3.5]),yaxis:axis('房价（千美元）')}, config);
+    await Plotly.newPlot(contour, [
+      {x:ws,y:bs,z:z.map(row => row.map(v => Math.log(Math.max(v,1e-6)))),type:'contour',
+       contours:{coloring:'lines'},line:{width:1.5},ncontours:14,colorscale:'Viridis',showscale:false,hoverinfo:'skip'},
+      {x:[],y:[],mode:'markers',marker:point,hoverinfo:'skip'},
+      {x:[],y:[],mode:'lines',line:{color:'#9470b4',dash:'dot'},hoverinfo:'skip'}
+    ], {...base,title:{text:'等高线 · 点击选择 w、b'},dragmode:false,
+        xaxis:axis('w',[-100,500]),yaxis:axis('b',[-250,350])}, config);
+    await Plotly.newPlot(surface, [
+      {x:ws,y:bs,z,type:'surface',colorscale:'Viridis',opacity:0.55,showscale:false,
+       hovertemplate:'w=%{x:.1f}<br>b=%{y:.1f}<br>J=%{z:.2f}<extra></extra>'},
+      {x:[],y:[],z:[],type:'scatter3d',mode:'markers',marker:{color:'#dc4d35',size:6},
+       hovertemplate:'w=%{x:.1f}<br>b=%{y:.1f}<br>J=%{z:.2f}<extra>当前位置</extra>'}
+    ], {...base,margin:{l:0,r:0,t:45,b:35},title:{text:'代价曲面 J(w, b) · 拖动旋转'},uirevision:'keep-camera',
+        scene:{xaxis:{title:{text:'w'}},yaxis:{title:{text:'b'}},zaxis:{title:{text:'J(w, b)'}},
+          camera:{eye:{x:-2,y:-2,z:1.4}},aspectmode:'cube',dragmode:'orbit'}}, {...config,scrollZoom:true});
+    async function update(w,b) {
+      const prediction = x.map(xi => w*xi+b), j = cost(w,b);
+      value.textContent = `w = ${w.toFixed(2)}　 b = ${b.toFixed(2)}　 J(w, b) = ${j.toFixed(2)}`;
+      await Promise.all([
+        Plotly.restyle(fit,{x:[x,x.flatMap(xi => [xi,xi,null])],
+          y:[prediction,x.flatMap((_,i) => [y[i],prediction[i],null])]},[1,2]),
+        Plotly.restyle(contour,{x:[[w],[-100,w,null,w,w]],y:[[b],[b,b,null,-250,b]]},[1,2]),
+        Plotly.restyle(surface,{x:[[w]],y:[[b]],z:[[j]]},[1])
+      ]);
+    }
+    // 用绘图区的实际像素范围换算坐标，空白处也能选点，窗口缩放后仍然准确。
+    contour.addEventListener('click', event => {
+      const r = contour.querySelector('.nsewdrag').getBoundingClientRect();
+      const u = (event.clientX-r.left)/r.width, v = (event.clientY-r.top)/r.height;
+      if (u>=0 && u<=1 && v>=0 && v<=1) update(-100+600*u,350-600*v);
+    });
+    await update(200,-100);
+  } catch (error) { value.textContent = '图形加载失败，请刷新页面重试。'; console.error(error); }
+})();
+</script>
+</html>

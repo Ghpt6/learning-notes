@@ -41,4 +41,9 @@ $m$ = number of training examples
 
 其中y-hat又可以写为：
 ![cost](image-1.png)
+
 最终，我们希望找到**使代价函数变小**的w和b的值
+
+代价函数的直观图形见 **[cost-function](cost-function.html)**
+
+## 梯度下降
